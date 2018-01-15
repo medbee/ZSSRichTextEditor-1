@@ -274,25 +274,35 @@ static CGFloat kDefaultScale = 0.5;
     if (![self isIpad]) {
         
         // Toolbar holder used to crop and position toolbar
-        UIView *toolbarCropper = [[UIView alloc] initWithFrame:CGRectMake(self.view.frame.size.width-44, 0, 44, 44)];
-        toolbarCropper.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin;
-        toolbarCropper.clipsToBounds = YES;
+        UIView *toolbarCropper = [[UIView alloc] initWithFrame:CGRectZero];
+        toolbarCropper.translatesAutoresizingMaskIntoConstraints = NO;
         
         // Use a toolbar so that we can tint
-        UIToolbar *keyboardToolbar = [[UIToolbar alloc] initWithFrame:CGRectMake(-7, -1, 44, 44)];
+        UIToolbar *keyboardToolbar = [[UIToolbar alloc] initWithFrame:CGRectZero];
+        keyboardToolbar.translatesAutoresizingMaskIntoConstraints = NO;
         [toolbarCropper addSubview:keyboardToolbar];
         
-        self.keyboardItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"ZSSkeyboard.png"] style:UIBarButtonItemStylePlain target:self action:@selector(dismissKeyboard)];
+        self.keyboardItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"ZSSkeyboard.png" inBundle:[NSBundle bundleForClass:[ZSSRichTextEditor class]] compatibleWithTraitCollection:nil] style:UIBarButtonItemStylePlain target:self action:@selector(dismissKeyboard)];
         keyboardToolbar.items = @[self.keyboardItem];
         [self.toolbarHolder addSubview:toolbarCropper];
+        [NSLayoutConstraint activateConstraints:@[
+                                                  [keyboardToolbar.leftAnchor constraintEqualToAnchor:toolbarCropper.leftAnchor],
+                                                  [keyboardToolbar.rightAnchor constraintEqualToAnchor:toolbarCropper.rightAnchor],
+                                                  [keyboardToolbar.topAnchor constraintEqualToAnchor:toolbarCropper.topAnchor],
+                                                  [keyboardToolbar.bottomAnchor constraintEqualToAnchor:toolbarCropper.bottomAnchor],
+                                                  [toolbarCropper.centerYAnchor constraintEqualToAnchor:self.toolbarHolder.centerYAnchor],
+                                                  [toolbarCropper.rightAnchor constraintEqualToAnchor:self.toolbarHolder.rightAnchor],
+                                                  [toolbarCropper.widthAnchor constraintEqualToAnchor:toolbarCropper.heightAnchor],
+                                                  [toolbarCropper.heightAnchor constraintEqualToAnchor:self.toolbarHolder.heightAnchor],
+                                                  ]];
+        
         
         UIView *line = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 0.6f, 44)];
         line.backgroundColor = [UIColor lightGrayColor];
         line.alpha = 0.7f;
         [toolbarCropper addSubview:line];
-        
     }
-    
+
     [self.view addSubview:self.toolbarHolder];
     
     //Build the toolbar
@@ -885,25 +895,21 @@ static CGFloat kDefaultScale = 0.5;
         items = [items arrayByAddingObjectsFromArray:self.customZSSBarButtonItems];
     }
     
-    // get the width before we add custom buttons
-    CGFloat toolbarWidth = items.count == 0 ? 0.0f : (CGFloat)(items.count * 39) - 10;
-    
-    if(self.customBarButtonItems != nil)
-    {
-        items = [items arrayByAddingObjectsFromArray:self.customBarButtonItems];
-        for(ZSSBarButtonItem *buttonItem in self.customBarButtonItems)
-        {
-            toolbarWidth += buttonItem.customView.frame.size.width + 11.0f;
-        }
-    }
-    
     self.toolbar.items = items;
     for (ZSSBarButtonItem *item in items) {
         item.tintColor = [self barButtonItemDefaultColor];
     }
     
-    self.toolbar.frame = CGRectMake(0, 0, toolbarWidth, 44);
-    self.toolBarScroll.contentSize = CGSizeMake(self.toolbar.frame.size.width, 44);
+    if (self.toolbar.superview) {
+        self.toolbar.translatesAutoresizingMaskIntoConstraints = NO;
+        
+        [NSLayoutConstraint activateConstraints:@[
+                                                  [self.toolbar.leftAnchor constraintEqualToAnchor:self.toolBarScroll.leftAnchor],
+                                                  [self.toolbar.rightAnchor constraintEqualToAnchor:self.toolBarScroll.rightAnchor],
+                                                  [self.toolbar.topAnchor constraintEqualToAnchor:self.toolBarScroll.topAnchor],
+                                                  [self.toolbar.bottomAnchor constraintEqualToAnchor:self.toolBarScroll.bottomAnchor],
+                                                  ]];
+    }
 }
 
 
@@ -1938,6 +1944,18 @@ static CGFloat kDefaultScale = 0.5;
     if ([notification.name isEqualToString:UIKeyboardWillShowNotification]) {
         
         [UIView animateWithDuration:duration delay:0 options:animationOptions animations:^{
+            
+            // consider tab bar height if we're used in a UITabBar
+            UIViewController *parent = self.parentViewController;
+            while (parent && ![parent respondsToSelector:@selector(tabBar)]) {
+                parent = parent.parentViewController;
+            }
+            CGFloat tabbarHeight = 0.f;
+            
+            if ([parent respondsToSelector:@selector(tabBar)]) {
+                UITabBar *tabBar = [parent valueForKey:@"tabBar"];
+                tabbarHeight = tabBar.frame.size.height;
+            }
             
             // Toolbar
             CGRect frame = self.toolbarHolder.frame;
