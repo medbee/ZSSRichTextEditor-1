@@ -1954,12 +1954,14 @@ static CGFloat kDefaultScale = 0.5;
             
             if ([parent respondsToSelector:@selector(tabBar)]) {
                 UITabBar *tabBar = [parent valueForKey:@"tabBar"];
-                tabbarHeight = tabBar.frame.size.height;
+                tabbarHeight = tabBar.isHidden ? 0 : tabBar.frame.size.height;
             }
             
+            CGRect keyboardInSelfView = [self.view convertRect:keyboardEnd fromView:[[UIApplication sharedApplication] delegate].window];
+
             // Toolbar
             CGRect frame = self.toolbarHolder.frame;
-            frame.origin.y = self.view.frame.size.height + tabbarHeight - (keyboardHeight + sizeOfToolbar);
+            frame.origin.y = keyboardInSelfView.origin.y - sizeOfToolbar;
             self.toolbarHolder.frame = frame;
             
             // Editor View
